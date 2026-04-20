@@ -94,15 +94,27 @@ export function Fridge({ user }: { user: User }) {
   const basePath = household ? `households/${household.id}` : `users/${user.uid}`;
 
   const commonIngredients = [
-    'Greek Yogurt', 'Green Beans', 'Green Peas', 'Grapes', 'Ground Beef', 'Ground Turkey',
-    'Chicken Breast', 'Chicken Thighs', 'Cheddar Cheese', 'Carrots', 'Cucumber', 'Celery',
+    'Apple', 'Avocado', 'Asparagus', 'Almonds',
+    'Banana', 'Blueberries', 'Broccoli', 'Bacon', 'Butter', 'Bread', 'Bell Pepper',
+    'Chicken Breast', 'Chicken Thighs', 'Cheddar Cheese', 'Carrots', 'Cucumber', 'Celery', 'Cottage Cheese', 'Corn',
     'Eggs', 'Egg Whites', 'English Muffin', 'Eggplant',
-    'Milk', 'Mozzarella', 'Mushrooms', 'Maple Syrup',
-    'Onion', 'Olive Oil', 'Oatmeal', 'Orange Juice',
-    'Potatoes', 'Pasta', 'Peanut Butter', 'Parmesan',
-    'Rice', 'Red Onion', 'Raspberries', 'Romaine Lettuce',
-    'Spinach', 'Strawberries', 'Salmon', 'Steak',
-    'Tomatoes', 'Tuna', 'Tofu', 'Tortillas',
+    'Feta Cheese', 'Fish', 'Flour',
+    'Greek Yogurt', 'Green Beans', 'Green Peas', 'Grapes', 'Ground Beef', 'Ground Turkey', 'Garlic',
+    'Ham', 'Honey', 'Hummus',
+    'Iceberg Lettuce',
+    'Jam', 'Juice',
+    'Kale', 'Ketchup',
+    'Lemon', 'Lime', 'Lamb',
+    'Milk', 'Mozzarella', 'Mushrooms', 'Maple Syrup', 'Mayonnaise', 'Mustard',
+    'Onion', 'Olive Oil', 'Oatmeal', 'Orange Juice', 'Oranges',
+    'Potatoes', 'Pasta', 'Peanut Butter', 'Parmesan', 'Pork', 'Peas',
+    'Quinoa',
+    'Rice', 'Red Onion', 'Raspberries', 'Romaine Lettuce', 'Radish',
+    'Spinach', 'Strawberries', 'Salmon', 'Steak', 'Shrimp', 'Soy Sauce',
+    'Tomatoes', 'Tuna', 'Tofu', 'Tortillas', 'Turkey',
+    'Vinegar',
+    'Walnuts', 'Watermelon',
+    'Yogurt',
     'Zucchini'
   ];
 
@@ -173,13 +185,15 @@ export function Fridge({ user }: { user: User }) {
 
   const handleAddItem = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!newItem.name || !newItem.quantity) return;
+    if (!newItem.name) return;
 
     setAdding(true);
     try {
-      const nutrition = await getNutritionInfo(newItem.name, newItem.quantity);
+      const quantity = newItem.quantity || '1 unit';
+      const nutrition = await getNutritionInfo(newItem.name, quantity);
       const itemData = {
         ...newItem,
+        quantity: newItem.quantity || 'As needed',
         ...nutrition,
         addedAt: serverTimestamp(),
         removedAt: null
@@ -225,9 +239,20 @@ export function Fridge({ user }: { user: User }) {
 
   return (
     <div className="space-y-12">
-      <header className="space-y-2">
-        <h2 className="text-4xl font-serif font-light tracking-tight">Your Fridge</h2>
-        <p className="text-stone-500 font-light italic">Track what's inside and stay organized</p>
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <h2 className="text-4xl font-serif font-light tracking-tight">Your Fridge</h2>
+          <p className="text-stone-500 font-light italic">Track what's inside and stay organized</p>
+        </div>
+        {items.length > 0 && (
+          <button
+            onClick={() => window.location.href = '/recipes'}
+            className="h-[60px] px-8 bg-stone-900 text-stone-50 rounded-2xl font-medium flex items-center justify-center gap-3 hover:bg-stone-800 transition-all shadow-lg shadow-stone-200"
+          >
+            <Sparkles className="w-5 h-5" />
+            Generate Recipes
+          </button>
+        )}
       </header>
 
       {/* Add Item Form */}
@@ -336,7 +361,7 @@ export function Fridge({ user }: { user: User }) {
             <div className="flex items-end">
               <button
                 type="submit"
-                disabled={adding || !newItem.name || !newItem.quantity}
+                disabled={adding || !newItem.name}
                 className="w-full h-[60px] px-8 bg-stone-900 text-stone-50 rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-stone-800 disabled:opacity-50 transition-all shadow-lg shadow-stone-200"
               >
                 {adding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}

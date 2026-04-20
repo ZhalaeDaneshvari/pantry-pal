@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs, writeBatch, deleteDoc, arrayUnion, getDocFromServer } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
-import { User as UserIcon, Heart, Ban, ShieldAlert, Plus, X, Loader2, Save, Sparkles, ChevronRight, RefreshCcw, AlertTriangle, Users, UserPlus, Copy, Check, Activity, ShoppingCart, Apple } from 'lucide-react';
+import { User as UserIcon, Heart, Ban, ShieldAlert, Plus, X, Loader2, Save, Sparkles, ChevronRight, RefreshCcw, AlertTriangle, Users, UserPlus, Copy, Check, Activity, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHousehold } from '../contexts/HouseholdContext';
 import { auth } from '../firebase';
@@ -258,33 +258,6 @@ export function Profile({ user }: { user: User }) {
     }
   };
 
-  const handleAppleSync = async () => {
-    setSaving(true);
-    const toastId = toast.loading("Connecting to Apple Health...");
-    
-    // Simulate a more realistic sync with a delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock data that feels "real"
-    const mockHealthData = {
-      weight: 72,
-      height: 175,
-      age: 28,
-      gender: 'other' as const,
-      activityLevel: 'moderate' as const,
-      healthConditions: ['PCOS']
-    };
-
-    setProfile(prev => ({
-      ...prev,
-      ...mockHealthData,
-      healthConditions: Array.from(new Set([...prev.healthConditions, ...mockHealthData.healthConditions]))
-    }));
-
-    toast.success("Successfully synced with Apple Health!", { id: toastId });
-    setSaving(false);
-  };
-
   const addItem = (type: string, value: string) => {
     if (!value) return;
     if (type === 'healthConditions') {
@@ -524,17 +497,6 @@ export function Profile({ user }: { user: User }) {
                 ))}
               </AnimatePresence>
             </div>
-          </div>
-
-          <div className="pt-6 border-t border-stone-50">
-            <button
-              onClick={handleAppleSync}
-              disabled={saving}
-              className="w-full py-4 bg-stone-50 text-stone-600 rounded-2xl text-sm font-medium flex items-center justify-center gap-3 hover:bg-stone-100 transition-all disabled:opacity-50"
-            >
-              <Apple className="w-4 h-4" />
-              Sync with Apple Health
-            </button>
           </div>
         </section>
 

@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { logout } from '../firebase';
-import { ChefHat, Refrigerator, User as UserIcon, LogOut, History, Calendar as CalendarIcon, Activity, ShoppingCart } from 'lucide-react';
+import { ChefHat, Refrigerator, User as UserIcon, LogOut, History, Calendar as CalendarIcon, ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -19,7 +19,6 @@ export function Layout({ children, user }: { children: ReactNode; user: User }) 
     { path: '/grocery', icon: ShoppingCart, label: 'Grocery' },
     { path: '/recipes', icon: ChefHat, label: 'Recipes' },
     { path: '/calendar', icon: CalendarIcon, label: 'Calendar' },
-    { path: '/fitness', icon: Activity, label: 'Fitness' },
     { path: '/profile', icon: UserIcon, label: 'Profile' },
   ];
 

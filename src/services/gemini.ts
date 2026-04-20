@@ -84,6 +84,7 @@ export const generateRecipes = async (
     Target Daily Calories: ${preferences.targetCalories || "Not specified"}
     
     IMPORTANT: 
+    - Estimate calories and nutritional information based on the ingredients used in the recipe.
     - If the user has PCOS, prioritize high protein, low glycemic index, and balanced macro splits. 
     - If the user has Diabetes, prioritize low sugar and fiber-rich ingredients.
     - If the user is on a "Cut", prioritize high volume, low calorie density meals.

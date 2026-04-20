@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, loginWithGoogle, loginWithApple, logout } from './firebase';
+import { auth, loginWithGoogle, logout } from './firebase';
 import { Toaster, toast } from 'sonner';
 import { Fridge } from './components/Fridge';
 import { Recipes } from './components/Recipes';
@@ -12,8 +12,7 @@ import { GroceryList } from './components/GroceryList';
 import { Layout } from './components/Layout';
 import { motion, AnimatePresence } from 'motion/react';
 import { HouseholdProvider } from './contexts/HouseholdContext';
-import { Fitness } from './components/Fitness';
-import { ChefHat, Refrigerator, User as UserIcon, LogOut, LogIn, History, Calendar as CalendarIcon, Activity, ShoppingCart, Mail, Apple } from 'lucide-react';
+import { ChefHat, Refrigerator, User as UserIcon, LogOut, LogIn, History, Calendar as CalendarIcon, ShoppingCart, Mail, AlertTriangle } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function App() {
@@ -97,32 +96,31 @@ export default function App() {
                       Continue with Google
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          await loginWithApple();
-                        } catch (error: any) {
-                          if (error.code === 'auth/operation-not-allowed') {
-                            toast.error("Apple Sign-in is not enabled in your Firebase Console.", {
-                              description: "Please go to Authentication > Sign-in method and enable it.",
-                              duration: 6000
-                            });
-                          } else {
-                            toast.error(error.message);
-                          }
-                        }
-                      }}
-                      className="w-full py-4 px-6 bg-stone-900 text-stone-50 rounded-2xl font-medium flex items-center justify-center gap-3 hover:bg-stone-800 transition-all shadow-lg"
-                    >
-                      <Apple className="w-5 h-5" />
-                      Continue with Apple
-                    </button>
-                    <button
                       onClick={() => setShowEmailLogin(true)}
                       className="w-full py-4 px-6 bg-stone-100 text-stone-600 rounded-2xl font-medium flex items-center justify-center gap-3 hover:bg-stone-200 transition-all"
                     >
                       <Mail className="w-5 h-5" />
                       Use Email Address
                     </button>
+
+                    <div className="pt-6 border-t border-stone-100">
+                      <button
+                        onClick={() => {
+                          toast.info("Setup Required", {
+                            description: "Please enable Email login in your Firebase Console (Project: gen-lang-client-0452440829).",
+                            duration: 10000,
+                            action: {
+                              label: "Open Console",
+                              onClick: () => window.open("https://console.firebase.google.com/project/gen-lang-client-0452440829/authentication/providers", "_blank")
+                            }
+                          });
+                        }}
+                        className="text-stone-400 text-sm font-light hover:text-stone-600 transition-colors flex items-center justify-center gap-2 mx-auto"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                        Trouble logging in?
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <motion.form 
@@ -182,7 +180,6 @@ export default function App() {
                 <Route path="/recipes" element={<Recipes user={user} />} />
                 <Route path="/history" element={<HistoryLog user={user} />} />
                 <Route path="/calendar" element={<CalendarView user={user} />} />
-                <Route path="/fitness" element={<Fitness user={user} />} />
                 <Route path="/profile" element={<Profile user={user} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
