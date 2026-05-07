@@ -1,5 +1,5 @@
 {
-  "name": "ChefFridge AI",
-  "description": "A sleek, personal AI recipe maker and refrigerator tracker that learns your tastes and helps you cook with what you have.",
-  "requestFramePermissions": ["camera", "geolocation"]
+  "name": "PantryPal",
+  "description": "Your cute robot kitchen sidekick! TRACK, COOK, and EAT smarter with warm beige vibes.",
+  "requestFramePermissions": ["geolocation"]
 }

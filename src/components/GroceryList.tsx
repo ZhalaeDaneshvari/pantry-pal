@@ -1,3 +1,4 @@
+import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { db } from '../firebase';
@@ -304,6 +305,3 @@ export function GroceryList({ user }: { user: User }) {
   );
 }
 
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}

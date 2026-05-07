@@ -15,6 +15,10 @@ export interface Recipe {
   instructions: string;
   servings: number;
   nutrition: NutritionInfo;
+  category: string; // e.g. "Standard", "Healthier Choice", "Quick & Easy"
+  healthTags: string[]; // e.g. ["PCOS Friendly", "Diabetes Friendly", "Low Carb"]
+  prepTime: string; // e.g. "20 mins"
+  difficulty: "Easy" | "Medium" | "Hard";
 }
 
 export const getNutritionInfo = async (itemName: string, quantity: string): Promise<NutritionInfo> => {
@@ -103,9 +107,16 @@ export const generateRecipes = async (
     ${healthContext}
     ${savedContext}
     
+    VARIETY REQUIREMENT: 
+    - At least one recipe should be a "Healthier Choice" (specifically optimized for weight management or lower calorie density).
+    - At least one recipe should be a "Quick & Easy" or "Standard" option.
+    - If the user has specific health conditions (like PCOS, Diabetes, etc.), identify which recipes are specifically "Friendly" for that condition and include those in the 'healthTags' array. For example, if a recipe is good for someone with PCOS, add "PCOS Friendly".
+    - Categories should be one of: "Standard", "Healthier Choice", "Quick & Easy", "Protein-Packed", "Low-Carb".
+    - healthTags should strictly highlight dietary relevance like "PCOS Friendly", "Gluten-Free", "Low-GI", etc.
+    
     IMPORTANT: Assume the user has basic pantry staples like salt, pepper, common spices, oil, and water. Do not list these as required ingredients unless they are central to the dish.
     
-    Provide the response as an array of recipe objects including 'servings' and 'instructions'.`,
+    Provide the response as an array of recipe objects including 'servings', 'instructions', 'category', 'healthTags', 'prepTime', and 'difficulty'.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -114,9 +125,13 @@ export const generateRecipes = async (
           type: Type.OBJECT,
           properties: {
             title: { type: Type.STRING },
+            category: { type: Type.STRING },
+            healthTags: { type: Type.ARRAY, items: { type: Type.STRING } },
             ingredients: { type: Type.ARRAY, items: { type: Type.STRING } },
             instructions: { type: Type.STRING },
             servings: { type: Type.NUMBER },
+            prepTime: { type: Type.STRING },
+            difficulty: { type: Type.STRING, enum: ["Easy", "Medium", "Hard"] },
             nutrition: {
               type: Type.OBJECT,
               properties: {
@@ -128,7 +143,7 @@ export const generateRecipes = async (
               required: ["calories", "protein", "carbs", "fat"]
             }
           },
-          required: ["title", "ingredients", "instructions", "servings", "nutrition"]
+          required: ["title", "category", "healthTags", "ingredients", "instructions", "servings", "nutrition", "prepTime", "difficulty"]
         }
       }
     }

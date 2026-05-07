@@ -1,21 +1,27 @@
+import { cn } from '../lib/utils';
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { db } from '../firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, serverTimestamp, where, getDocs } from 'firebase/firestore';
 import { generateRecipes, Recipe } from '../services/gemini';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChefHat, Loader2, Sparkles, Bookmark, Trash2, Flame, Beef, Wheat, Droplets, ChevronRight, Refrigerator, ShoppingCart } from 'lucide-react';
+import { ChefHat, Loader2, Sparkles, Bookmark, Trash2, Flame, Beef, Wheat, Droplets, ChevronRight, Refrigerator, ShoppingCart, ArrowLeft, Bot, Box, Timer, Gauge, CheckCircle2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { useHousehold } from '../contexts/HouseholdContext';
+import { useRecipes } from '../contexts/RecipeContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export function Recipes({ user }: { user: User }) {
   const { household } = useHousehold();
+  const { generatedRecipes, setGeneratedRecipes, lastGeneratedAt, setLastGeneratedAt } = useRecipes();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [fridgeItems, setFridgeItems] = useState<any[]>([]);
   const [savedRecipes, setSavedRecipes] = useState<any[]>([]);
-  const [generatedRecipes, setGeneratedRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [selectedIngredients] = useState<string[]>(location.state?.ingredients || []);
   const [userPreferences, setUserPreferences] = useState({ 
     likes: [], 
     dislikes: [], 
@@ -43,7 +49,7 @@ export function Recipes({ user }: { user: User }) {
       }
     );
 
-    // Fetch user preferences and health metrics
+    // Fetch user preferences
     const fetchPrefs = async () => {
       const docRef = doc(db, 'users', user.uid);
       const docSnap = await getDoc(docRef);
@@ -62,25 +68,32 @@ export function Recipes({ user }: { user: User }) {
     };
     fetchPrefs();
 
+    // Auto-generate if ingredients passed and no current recipes
+    if (location.state?.ingredients && generatedRecipes.length === 0) {
+      handleGenerateRecipes();
+    }
+
     return () => {
       fridgeUnsubscribe();
       recipesUnsubscribe();
     };
-  }, [user.uid]);
+  }, [user.uid, basePath]);
 
   const handleGenerateRecipes = async () => {
-    if (fridgeItems.length === 0) {
-      toast.error("Add some items to your fridge first!");
+    const ingredientsToUse = selectedIngredients.length > 0 ? selectedIngredients : fridgeItems.map(item => item.name);
+    
+    if (ingredientsToUse.length === 0) {
+      toast.error("Add some items to your pantry first!");
       return;
     }
 
     setGenerating(true);
     try {
-      const ingredients = fridgeItems.map(item => item.name);
       const savedTitles = savedRecipes.map(r => r.title);
-      const recipes = await generateRecipes(ingredients, userPreferences, savedTitles);
+      const recipes = await generateRecipes(ingredientsToUse, userPreferences, savedTitles);
       setGeneratedRecipes(recipes);
-      toast.success("Recipes generated!");
+      setLastGeneratedAt(Date.now());
+      toast.success("PantryChef has finished cooking up ideas!");
     } catch (error) {
       console.error("Error generating recipes:", error);
       toast.error("Failed to generate recipes. Please try again.");
@@ -110,19 +123,68 @@ export function Recipes({ user }: { user: User }) {
     }
   };
 
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 space-y-8">
+        <div className="relative">
+          <motion.div
+            animate={{ 
+              y: [0, -20, 0],
+            }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className="p-10 bg-white rounded-[50px] shadow-2xl shadow-[#FF8C42]/20 relative"
+          >
+            <Bot className="w-24 h-24 text-[#FF8C42]" />
+            <motion.div 
+              animate={{ rotate: [-5, 5, -5] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-8 left-1/2 -translate-x-1/2"
+            >
+              <ChefHat className="w-16 h-16 text-white stroke-[#FF8C42] stroke-2 fill-white drop-shadow-xl" />
+            </motion.div>
+          </motion.div>
+        </div>
+        <div className="text-center space-y-2">
+          <motion.h3 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-3xl font-serif font-bold text-[#2D2424]"
+          >
+            Cooking up ideas...
+          </motion.h3>
+          <p className="text-[#FF8C42] font-medium animate-pulse font-bold uppercase tracking-widest text-[10px]">Consulting my robot recipes database</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-12 pb-20">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <h2 className="text-4xl font-serif font-light tracking-tight">AI Recipes</h2>
-          <p className="text-stone-500 font-light italic">Personalized meals based on your fridge</p>
+          <div className="flex items-center gap-3 mb-2">
+            <button 
+              onClick={() => navigate('/')}
+              className="p-3 bg-white border border-[#FFEDE1] hover:bg-[#FFEDE1] rounded-2xl text-[#FF8C42] transition-colors shadow-sm"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-4xl font-serif font-bold tracking-tight text-[#2D2424]">Pantry Chef</h2>
+          </div>
+          <p className="text-[#FF8C42] font-medium italic">
+            {selectedIngredients.length > 0 
+              ? `Using ${selectedIngredients.length} items from your pantry ✨`
+              : generatedRecipes.length > 0 
+                ? "Here are your latest suggestions!"
+                : "Let's see what we can make with your ingredients!"}
+          </p>
         </div>
         <button
           onClick={handleGenerateRecipes}
-          disabled={generating || fridgeItems.length === 0}
-          className="h-[60px] px-8 bg-stone-900 text-stone-50 rounded-2xl font-medium flex items-center justify-center gap-3 hover:bg-stone-800 disabled:opacity-50 transition-all shadow-lg shadow-stone-200"
+          disabled={generating || (fridgeItems.length === 0 && selectedIngredients.length === 0)}
+          className="h-[60px] px-8 bg-[#FF8C42] text-white rounded-3xl font-bold flex items-center justify-center gap-3 hover:bg-[#FF8C42]/90 disabled:opacity-50 transition-all shadow-lg shadow-[#FF8C42]/10"
         >
-          {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+          <Sparkles className="w-5 h-5" />
           Generate Recipes
         </button>
       </header>
@@ -135,11 +197,11 @@ export function Recipes({ user }: { user: User }) {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <h3 className="text-xl font-serif font-light text-stone-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-stone-400" />
-              New Suggestions
+            <h3 className="text-xl font-serif font-bold text-[#2D2424] flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#FF8C42]" />
+              PantryPal Suggestions
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
               {generatedRecipes.map((recipe, idx) => (
                 <RecipeCard 
                   key={idx} 
@@ -157,21 +219,24 @@ export function Recipes({ user }: { user: User }) {
 
       {/* Saved Recipes */}
       <section className="space-y-6">
-        <h3 className="text-xl font-serif font-light text-stone-900 flex items-center gap-2">
-          <Bookmark className="w-5 h-5 text-stone-400" />
-          Saved Recipes
+        <h3 className="text-xl font-serif font-bold text-[#2D2424] flex items-center gap-2">
+          <Bookmark className="w-5 h-5 text-[#FF8C42]" />
+          My Recipe Book
         </h3>
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 text-stone-300 animate-spin" />
+            <Loader2 className="w-8 h-8 text-[#FFEDE1] animate-spin" />
           </div>
         ) : savedRecipes.length === 0 ? (
-          <div className="text-center py-20 bg-stone-100/50 rounded-[32px] border border-dashed border-stone-200">
-            <ChefHat className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-            <p className="text-stone-400 font-light italic">No saved recipes yet. Generate some to get started!</p>
+          <div className="text-center py-24 bg-white rounded-[50px] border-4 border-dashed border-[#FFEDE1]">
+            <div className="w-20 h-20 bg-[#FFEDE1] rounded-[30px] flex items-center justify-center mx-auto mb-6">
+              <Bot className="w-10 h-10 text-[#FF8C42]" />
+            </div>
+            <p className="text-[#FF8C42] font-semibold italic">No saved recipes yet!</p>
+            <p className="text-xs text-[#2D2424]/40 mt-1 font-bold">Generate some healthy ideas above.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {savedRecipes.map((recipe) => (
               <RecipeCard 
                 key={recipe.id} 
@@ -208,19 +273,19 @@ function RecipeCard({ recipe, onSave, onDelete, isGenerated, fridgeItems, basePa
       });
 
       if (missingIngredients.length === 0) {
-        toast.info("You already have all ingredients in your fridge!");
+        toast.info("You have everything for this! Get cooking! 👨‍🍳");
         return;
       }
 
       for (const ing of missingIngredients) {
         await addDoc(collection(db, basePath, 'groceryList'), {
           name: ing,
-          quantity: '1 unit',
+          quantity: 'To taste',
           isBought: false,
           addedAt: serverTimestamp()
         });
       }
-      toast.success(`Added ${missingIngredients.length} missing items to grocery list!`);
+      toast.success(`Missing items added to your grocery list!`);
     } catch (error) {
       toast.error("Failed to add to grocery list");
     } finally {
@@ -231,80 +296,91 @@ function RecipeCard({ recipe, onSave, onDelete, isGenerated, fridgeItems, basePa
   return (
     <motion.div
       layout
-      className="bg-white rounded-[32px] border border-stone-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
+      className="bg-white rounded-[45px] border border-[#FFEDE1] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col group p-2"
     >
-      <div className="p-6 space-y-4 flex-1">
-        <div className="flex justify-between items-start">
-          <h4 className="text-xl font-serif font-light text-stone-900 leading-tight">{recipe.title}</h4>
-          {isGenerated ? (
-            <button
-              onClick={onSave}
-              className="p-2 text-stone-300 hover:text-stone-900 hover:bg-stone-50 rounded-xl transition-all"
-            >
-              <Bookmark className="w-5 h-5" />
-            </button>
-          ) : (
-            <button
-              onClick={onDelete}
-              className="p-2 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-5 gap-2">
-          <div className="bg-stone-50 p-2 rounded-xl text-center">
-            <Flame className="w-3 h-3 text-orange-400 mx-auto mb-1" />
-            <p className="text-[10px] font-bold text-stone-900">{recipe.nutrition.calories}</p>
+      <div className="p-10 space-y-8 flex-1 select-none">
+        <div className="flex justify-between items-start gap-4">
+          <div className="space-y-1">
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              <span className="px-3 py-1 bg-[#FFEDE1] text-[#FF8C42] text-[10px] font-extrabold uppercase tracking-widest rounded-full">
+                {recipe.category || "PantryPal Rec"}
+              </span>
+              {recipe.healthTags?.map((tag: string, i: number) => (
+                <span key={i} className="px-3 py-1 bg-teal-50 text-teal-600 text-[10px] font-extrabold uppercase tracking-widest rounded-full border border-teal-100 flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <h4 className="text-xl font-serif font-bold text-[#2D2424] leading-tight">{recipe.title}</h4>
           </div>
-          <div className="bg-stone-50 p-2 rounded-xl text-center">
-            <Beef className="w-3 h-3 text-red-400 mx-auto mb-1" />
-            <p className="text-[10px] font-bold text-stone-900">{recipe.nutrition.protein}g</p>
-          </div>
-          <div className="bg-stone-50 p-2 rounded-xl text-center">
-            <Wheat className="w-3 h-3 text-amber-400 mx-auto mb-1" />
-            <p className="text-[10px] font-bold text-stone-900">{recipe.nutrition.carbs}g</p>
-          </div>
-          <div className="bg-stone-50 p-2 rounded-xl text-center">
-            <Droplets className="w-3 h-3 text-blue-400 mx-auto mb-1" />
-            <p className="text-[10px] font-bold text-stone-900">{recipe.nutrition.fat}g</p>
-          </div>
-          <div className="bg-stone-900 p-2 rounded-xl text-center">
-            <p className="text-[10px] font-bold text-stone-50 tracking-tighter">{recipe.servings}</p>
-            <p className="text-[8px] uppercase tracking-tighter text-stone-400">serv</p>
+          <div className="flex items-center gap-1">
+            {isGenerated ? (
+              <button
+                onClick={onSave}
+                className="p-3 text-[#FFEDE1] hover:text-[#FF8C42] hover:bg-[#FFEDE1] rounded-2xl transition-all"
+              >
+                <Bookmark className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                onClick={onDelete}
+                className="p-3 text-[#FFEDE1] hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-stone-400">Ingredients</p>
-          <div className="flex flex-wrap gap-1">
-            {recipe.ingredients.slice(0, 4).map((ing: string, i: number) => (
-              <span key={i} className="px-2 py-1 bg-stone-50 text-[10px] text-stone-600 rounded-lg">{ing}</span>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-[#FAF7F2] p-3.5 rounded-2xl text-center border border-[#FFEDE1] flex flex-col items-center justify-center min-h-[70px]">
+            <Flame className="w-4 h-4 text-[#FF8C42] mb-1.5" />
+            <p className="text-[11px] font-bold text-[#2D2424] leading-tight">{recipe.nutrition.calories} kcal</p>
+          </div>
+          <div className="bg-[#FAF7F2] p-3.5 rounded-2xl text-center border border-[#FFEDE1] flex flex-col items-center justify-center min-h-[70px]">
+            <Timer className="w-4 h-4 text-sky-400 mb-1.5" />
+            <p className="text-[11px] font-bold text-[#2D2424] leading-tight whitespace-nowrap">{recipe.prepTime || "25 mins"}</p>
+          </div>
+          <div className="bg-[#FAF7F2] p-3.5 rounded-2xl text-center border border-[#FFEDE1] flex flex-col items-center justify-center min-h-[70px]">
+            <Gauge className="w-4 h-4 text-emerald-400 mb-1.5" />
+            <p className="text-[11px] font-bold text-[#2D2424] leading-tight">{recipe.difficulty || "Easy"}</p>
+          </div>
+          <div className="bg-[#FAF7F2] p-3.5 rounded-2xl text-center border border-[#FFEDE1] flex flex-col items-center justify-center min-h-[70px]">
+            <p className="text-base font-black text-[#FF8C42] tracking-tighter leading-none mb-1">{recipe.servings}</p>
+            <p className="text-[9px] uppercase tracking-widest text-[#2D2424]/40 font-black">Serves</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-[10px] uppercase tracking-widest font-black text-[#FF8C42]">Pantry Check</p>
+          <div className="flex flex-wrap gap-2">
+            {recipe.ingredients.slice(0, 5).map((ing: string, i: number) => (
+              <span key={i} className="px-3 py-1.5 bg-[#FAF7F2] text-[10px] font-bold text-[#2D2424]/60 rounded-xl border border-[#FFEDE1]">{ing}</span>
             ))}
-            {recipe.ingredients.length > 4 && (
-              <span className="px-2 py-1 bg-stone-50 text-[10px] text-stone-400 rounded-lg">+{recipe.ingredients.length - 4} more</span>
+            {recipe.ingredients.length > 5 && (
+              <span className="px-3 py-1.5 bg-[#FAF7F2] text-[10px] font-bold text-[#FF8C42] rounded-xl border border-[#FFEDE1]">+{recipe.ingredients.length - 5} more</span>
             )}
           </div>
         </div>
       </div>
 
-      <div className="p-6 pt-0 space-y-4">
+      <div className="p-10 pt-0 space-y-5">
         <button
           onClick={handleAddToGrocery}
           disabled={addingToGrocery}
-          className="w-full py-3 px-4 bg-stone-100 text-stone-900 rounded-xl text-xs font-medium flex items-center justify-center gap-2 hover:bg-stone-200 transition-all disabled:opacity-50"
+          className="w-full py-5 px-4 bg-[#FFEDE1] text-[#FF8C42] rounded-3xl text-sm font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#FF8C42] hover:text-white transition-all disabled:opacity-50"
         >
-          {addingToGrocery ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-          Add Missing Ingredients to List
+          {addingToGrocery ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
+          Get Missing Items
         </button>
 
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full py-3 px-4 border border-stone-100 flex items-center justify-between text-xs font-medium text-stone-500 hover:bg-stone-50 rounded-xl transition-all"
+          className="w-full py-5 px-6 bg-white border-2 border-[#FFEDE1] flex items-center justify-between text-[11px] font-black uppercase tracking-[0.1em] text-[#2D2424]/60 hover:bg-[#FAF7F2] rounded-3xl transition-all"
         >
-          {expanded ? "Hide Instructions" : "View Instructions"}
-          <ChevronRight className={cn("w-4 h-4 transition-transform", expanded && "rotate-90")} />
+          {expanded ? "Hide Recipes" : "View Cooking Instructions"}
+          <ChevronDown className={cn("w-5 h-5 transition-transform duration-300", expanded && "rotate-180")} />
         </button>
       </div>
 
@@ -314,9 +390,9 @@ function RecipeCard({ recipe, onSave, onDelete, isGenerated, fridgeItems, basePa
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-stone-50/50"
+            className="overflow-hidden bg-[#FAF7F2]/50"
           >
-            <div className="p-6 text-sm text-stone-600 font-light leading-relaxed prose prose-stone prose-sm">
+            <div className="p-8 text-[#2D2424] leading-relaxed prose prose-stone prose-sm max-w-none border-t border-[#FFEDE1] markdown-body">
               <ReactMarkdown>{recipe.instructions}</ReactMarkdown>
             </div>
           </motion.div>
@@ -326,6 +402,3 @@ function RecipeCard({ recipe, onSave, onDelete, isGenerated, fridgeItems, basePa
   );
 }
 
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}
